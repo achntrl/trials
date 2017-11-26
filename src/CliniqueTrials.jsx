@@ -11,9 +11,13 @@ class CliniqueTrials extends Component {
       trials: [
         {start: 0, end: 15, title: 'Essai 0'},
         {start: 5, end: 10, title: 'Essai 1'},
-        {start: 12, end: 28, title: 'Essai 2'},
-        {start: 23, end: 25, title: 'Essai 3'},
-        {start: 32, end: 120, title: 'Essai 4'},
+        {start: 12, end: 35, title: 'Essai 2'},
+        {start: 23, end: 33, title: 'Essai 3'},
+        {start: 32, end: 40, title: 'Essai 4'},
+        {start: 45, end: 55, title: 'Essai 5'},
+        {start: 50, end: 70, title: 'Essai 6'},
+        {start: 85, end: 100, title: 'Essai 7'},
+        {start: 110, end: 120, title: 'Essai 8'},
       ],
       step: 720 / 120  // Over 10 years
     };
@@ -27,42 +31,48 @@ class CliniqueTrials extends Component {
     const startEvents = _.map(startTrials, function (trial){ return {'date': trial.start, 'event': 'start'} });
     const endEvents = _.map(endTrials, function (trial){ return {'date': trial.end, 'event': 'end'} });
 
-    const allEvents = _.sortBy( _.concat(startEvents,endEvents), ['date'])
+    const allEvents = _.sortBy(_.concat(startEvents,endEvents), ['date'])
 
 
-    let collisions = {0:0}
+    let collisionsCount = {0:0}
     let acc = 0
     for (let i=0; i < allEvents.length; ++i) {
       let anEvent = allEvents[i]
-      acc += anEvent.event == 'start' ? +1 : -1
-      collisions[anEvent.date] = acc
+      acc += anEvent.event === 'start' ? +1 : -1
+      collisionsCount[anEvent.date] = acc
     }
 
-    let locationOfCollisions = _.compact(_.map(collisions, (val, key) => {if (val > 1) return key}))
+    let collisionsPositions = _.compact(_.map(collisionsCount, (val, key) => {if (val > 1) return key}))
 
-    let findTrialsAtCollision = (position, trials) => {
+    const findTrialsAtCollision = (position, trials) => {
       return _.filter(trials, trial => {
         return trial.start <= position && position <= trial.end;
       })
     }
 
-    let handleCollision = (collidings) => {
-      if (collidings[0].position === undefined && collidings[1].position === undefined) {
-        collidings[0].position = 0;
-        collidings[1].position = 1;
-      } else if (collidings[0].position === undefined) {
-        collidings[0].position = 1 - collidings[1].position;
-      } else if (collidings[1].position === undefined) {
-        collidings[1].position = 1 - collidings[0].position;
-      }
-      collidings[0].collide = true
-      collidings[1].collide = true
-    }
+    const  collisionsMap = _.map(collisionsPositions, collision => {
+      const collisions = findTrialsAtCollision(parseInt(collision, 10), trials)
+      return {collisions: collisions, number: collisions.length }
+    })
 
-    _.map(locationOfCollisions, (collision) => {
-      handleCollision(findTrialsAtCollision(parseInt(collision, 10), trials));
-    } )
-    console.log(trials)
+    const sortedCollisions = _.reverse(_.sortBy(_.uniqWith(collisionsMap, _.isEqual), ['number']))
+
+    let handleCollisions = (sortedCollisions) => {
+      _.map(sortedCollisions, collisions => {
+        const collisionsWithoutPosition = _.filter(collisions.collisions, collision => collision.position === undefined)
+        const collisionsWithPosition = _.filter(collisions.collisions, collision => collision.position !== undefined)
+        const usedPositions = _.map(collisionsWithPosition, 'position')
+        const biggestCollisionFactor = _.max(_.map(collisions.collisions, collision => collision.collisionFactor)) || collisions.number
+        const positions = _.map(Array(biggestCollisionFactor), (e, i) => i)
+        const remainingPositions = _.difference(positions, usedPositions)
+
+        _.map(collisionsWithoutPosition, (collision, index) => {
+          collision.position = remainingPositions[index]
+          collision.collisionFactor = biggestCollisionFactor
+        })
+      })
+    }
+    handleCollisions(sortedCollisions);
     this.setState({trials});
   }
   widthMonthToPx = (month) => { return this.state.step * month}
@@ -72,14 +82,12 @@ class CliniqueTrials extends Component {
       start={this.widthMonthToPx(trial.start)}
       end={this.widthMonthToPx(trial.end)}
       height={this.state.height}
-      collisionFactor={trial.collide ? 2 : 1}
+      collisionFactor={trial.collisionFactor ? trial.collisionFactor : 1 }
       position={trial.position ? trial.position : 0}
       title={trial.title}
       key={trial.title}
     />;
   }
-
-
 
   render() {
     return(
