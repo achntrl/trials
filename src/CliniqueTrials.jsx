@@ -23,57 +23,110 @@ class CliniqueTrials extends Component {
     };
   }
 
-  componentWillMount() {
-    let trials = this.state.trials;
+  /**
+   * Return the list of all events (starting or ending of a trial) sorted by date
+   *
+   * Sample output data: [{date: 0, event: "start"}, {date: 10, event: "end"}, ...]
+   *
+   * Complexity: o(n log n) (bound by the sortBy)
+   */
+  getEvents(trials) {
     const startTrials = _.sortBy(trials, ['start']);
     const endTrials = _.sortBy(trials, ['end']);
 
-    const startEvents = _.map(startTrials, function (trial){ return {'date': trial.start, 'event': 'start'} });
-    const endEvents = _.map(endTrials, function (trial){ return {'date': trial.end, 'event': 'end'} });
+    const startEvents = _.map(startTrials, trial => { return {'date': trial.start, 'event': 'start'} });
+    const endEvents = _.map(endTrials, trial => { return {'date': trial.end, 'event': 'end'} });
 
-    const allEvents = _.sortBy(_.concat(startEvents,endEvents), ['date'])
+    return _.sortBy(_.concat(startEvents,endEvents), ['date'])
+  }
 
-
+  /**
+   * Get all the collisions built from the event data. Return them ordered by the
+   * collision factor (number of trials involved in the collision).
+   *
+   * Sample output data:
+   * [{
+   *   "trials": [
+   *      {"start": 12, "end": 35, "title": "Essai 2"},
+   *      {"start": 23, "end": 33, "title": "Essai 3"},
+   *      {"start": 32, "end": 40, "title": "Essai 4"}
+   *    ],
+   *   "collisionFactor": 3
+   * }, ...]
+   *
+   * Complexity: o(n^2) because findTrialsAtPosition is o(n)
+   */
+  getCollisionsFromEvents(events, trials) {
     let collisionsCount = {0:0}
-    let acc = 0
-    for (let i=0; i < allEvents.length; ++i) {
-      let anEvent = allEvents[i]
-      acc += anEvent.event === 'start' ? +1 : -1
-      collisionsCount[anEvent.date] = acc
+    let accumulator = 0
+    for (let i=0; i < events.length; ++i) {
+      let anEvent = events[i]
+      accumulator += anEvent.event === 'start' ? +1 : -1
+      collisionsCount[anEvent.date] = accumulator
     }
+    const collisionsPositions = _.compact(_.map(collisionsCount, (val, key) => {if (val > 1) return key}))
 
-    let collisionsPositions = _.compact(_.map(collisionsCount, (val, key) => {if (val > 1) return key}))
-
-    const findTrialsAtCollision = (position, trials) => {
-      return _.filter(trials, trial => {
-        return trial.start <= position && position <= trial.end;
-      })
-    }
-
-    const  collisionsMap = _.map(collisionsPositions, collision => {
-      const collisions = findTrialsAtCollision(parseInt(collision, 10), trials)
-      return {collisions: collisions, number: collisions.length }
+    const collisionsMap = _.map(collisionsPositions, collisionPosition => {
+      const collisions = this.findTrialsAtPosition(parseInt(collisionPosition, 10), trials)
+      return {trials: collisions, collisionFactor: collisions.length }
     })
 
-    const sortedCollisions = _.reverse(_.sortBy(_.uniqWith(collisionsMap, _.isEqual), ['number']))
+    return _.reverse(_.sortBy(_.uniqWith(collisionsMap, _.isEqual), ['collisionFactor']))
+  }
 
-    let handleCollisions = (sortedCollisions) => {
-      _.map(sortedCollisions, collisions => {
-        const collisionsWithoutPosition = _.filter(collisions.collisions, collision => collision.position === undefined)
-        const collisionsWithPosition = _.filter(collisions.collisions, collision => collision.position !== undefined)
-        const usedPositions = _.map(collisionsWithPosition, 'position')
-        const biggestCollisionFactor = _.max(_.map(collisions.collisions, collision => collision.collisionFactor)) || collisions.number
-        const positions = _.map(Array(biggestCollisionFactor), (e, i) => i)
-        const remainingPositions = _.difference(positions, usedPositions)
+  /**
+   * Handle all the collisions : for each collision, the function separate
+   * trials with position and trials without position, and give remaining slots
+   * to trials without position
+   *
+   * Sample output data: {"start": 12, "end": 35, "title": "Essai 2", collisionFactor: 3, position: 1},
+   *
+   * Complexity: o(n^2)
+   */
+  handleCollisions(sortedCollisions, trials) {
+    _.map(sortedCollisions, collision => {
+      // Assert rule #2
+      const biggestCollisionFactor = _.max(_.map(collision.trials, trial => trial.collisionFactor)) || collision.collisionFactor
 
-        _.map(collisionsWithoutPosition, (collision, index) => {
-          collision.position = remainingPositions[index]
-          collision.collisionFactor = biggestCollisionFactor
-        })
+      // Get available positions (the ones that are not already occupied)
+      const trialsWithPosition = _.filter(collision.trials, trial => trial.position !== undefined)
+      const positions = _.map(Array(biggestCollisionFactor), (e, i) => i)
+      const usedPositions = _.map(trialsWithPosition, 'position')
+      const remainingPositions = _.difference(positions, usedPositions)
+
+      // Allocate the remaining positions to the trials without positions
+      // One invariant is that trialsWithoutPosition.length <= remainingPositions.length
+      const trialsWithoutPosition = _.filter(collision.trials, trial => trial.position === undefined)
+      _.map(trialsWithoutPosition, (trial, index) => {
+        trial.position = remainingPositions[index]
+        trial.collisionFactor = biggestCollisionFactor
       })
-    }
-    handleCollisions(sortedCollisions);
-    this.setState({trials});
+    })
+
+    return trials
+  }
+
+  /**
+   * Helper function that get all the trials at a given date
+   *
+   * Complexity: o(n) This could be optimized in the future by using a interval
+   * tree. It could bring the complexity to o(log n)
+   */
+  findTrialsAtPosition(position, trials) {
+    return _.filter(trials, trial => {
+      return trial.start <= position && position <= trial.end;
+    })
+  }
+
+  componentWillMount() {
+    let trials = this.state.trials
+
+    const events = this.getEvents(trials)
+    const sortedCollisions = this.getCollisionsFromEvents(events, trials)
+
+    const positionnedTrials = this.handleCollisions(sortedCollisions, trials)
+
+    this.setState({trials: positionnedTrials});
   }
   widthMonthToPx = (month) => { return this.state.step * month}
 
