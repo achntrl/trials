@@ -1,0 +1,9 @@
+.container {
+  background-color: #f8f8f2;
+  position: relative;
+  height: 250px;
+  padding: 10px 0;
+  width: 720px;
+  margin: auto;
+  margin-top: 50px;
+}

@@ -1,6 +1,8 @@
 import React, { Component } from 'react';
 import Trial from './Trial'
+import Ruler from './Ruler'
 import _ from 'lodash'
+import './CliniqueTrials.css'
 
 class CliniqueTrials extends Component {
   constructor() {
@@ -9,15 +11,10 @@ class CliniqueTrials extends Component {
       width: 720,
       height: 250,
       trials: [
-        {start: 0, end: 15, title: 'Essai 0'},
-        {start: 5, end: 10, title: 'Essai 1'},
-        {start: 12, end: 35, title: 'Essai 2'},
-        {start: 23, end: 33, title: 'Essai 3'},
-        {start: 32, end: 40, title: 'Essai 4'},
-        {start: 45, end: 55, title: 'Essai 5'},
-        {start: 50, end: 70, title: 'Essai 6'},
-        {start: 85, end: 100, title: 'Essai 7'},
-        {start: 110, end: 120, title: 'Essai 8'},
+        { start: 5, end: 50, title: 'Study of Bendamustine' },
+        { start: 55, end: 85, title: 'ASCT With Nivolumab' },
+        { start: 70, end: 100, title: 'Study of Stockolm' },
+        { start: 90, end: 115, title: 'Bortezomib' },
       ],
       step: 720 / 120  // Over 10 years
     };
@@ -146,6 +143,7 @@ class CliniqueTrials extends Component {
     return(
       <div className="container">
         {_.map(this.state.trials, (trial) => this.renderTrial(trial))}
+        <Ruler/>
       </div>
     );
   }
