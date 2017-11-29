@@ -15,3 +15,5 @@ Two blocs collisions
 ![more_collisions](images/more_collisions.png)
 
 Three blocs collisions
+
+The algorithm has a complexity of o(n^2) in the case where all blocks collides with each others on different point (see comments in CliniqueTrials for information on each function)

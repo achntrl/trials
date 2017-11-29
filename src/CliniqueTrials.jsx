@@ -5,17 +5,12 @@ import _ from 'lodash'
 import './CliniqueTrials.css'
 
 class CliniqueTrials extends Component {
-  constructor() {
-    super();
+  constructor(props) {
+    super(props);
     this.state = {
       width: 720,
       height: 250,
-      trials: [
-        { start: 5, end: 50, title: 'Study of Bendamustine' },
-        { start: 55, end: 85, title: 'ASCT With Nivolumab' },
-        { start: 70, end: 100, title: 'Study of Stockolm' },
-        { start: 90, end: 115, title: 'Bortezomib' },
-      ],
+      trials: this.props.trials,
       step: 720 / 120  // Over 10 years
     };
   }
@@ -78,7 +73,7 @@ class CliniqueTrials extends Component {
    *
    * Sample output data: {"start": 12, "end": 35, "title": "Essai 2", collisionFactor: 3, position: 1},
    *
-   * Complexity: o(n^2)
+   * Complexity: o(n^2): in extreme cases where all blocks collide with each other at a different point
    */
   handleCollisions(sortedCollisions, trials) {
     _.map(sortedCollisions, collision => {
@@ -125,9 +120,9 @@ class CliniqueTrials extends Component {
 
     this.setState({trials: positionnedTrials});
   }
-  widthMonthToPx = (month) => { return this.state.step * month}
+  widthMonthToPx = month => { return this.state.step * month}
 
-  renderTrial = (trial) => {
+  renderTrial = trial => {
     return <Trial
       start={this.widthMonthToPx(trial.start)}
       end={this.widthMonthToPx(trial.end)}
@@ -142,11 +137,11 @@ class CliniqueTrials extends Component {
   render() {
     return(
       <div className="container">
-        {_.map(this.state.trials, (trial) => this.renderTrial(trial))}
+        {_.map(this.state.trials, trial => this.renderTrial(trial))}
         <Ruler/>
       </div>
     );
   }
 }
 
-export default CliniqueTrials
+export default CliniqueTrials;
