@@ -8,6 +8,13 @@ Blocs of time respect these 3 rules:
 2. If two blocs of time, they have to be the same height.
 3. Blocs should use all vertical space when they can, but rule #2 has precedence over this rule
 
+Run with
+
+```
+yarn install
+yarn start
+```
+
 ![default](images/default.png)
 
 Two blocs collisions
